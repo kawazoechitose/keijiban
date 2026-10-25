@@ -95,7 +95,7 @@ function placeRefs() {
    ・手動でつないだ組：いつも表示
    ・自動の関連付け：「同じ写真」「同じ撮影場所」「同じ撮影時期」のうち、開くたびにランダムに1つ選んで表示
      （同じ仲間が3枚以上あるときは、近いもの同士を順に結んで1本の木の形にする） */
-const AUTO_KEYS = ["photo_group", "place", "shot"];
+const AUTO_KEYS = ["photo_group", "place", "shot", "title"];
 
 function drawLinks(list) {
   // 掲示物の中心（掲示面に対する割合）
@@ -104,7 +104,7 @@ function drawLinks(list) {
     const hFrac = p.pos_width * (p.height_mm / p.width_mm) / BOARD_RATIO;
     center[p.id] = [p.pos_left + p.pos_width / 2, p.pos_top + hFrac / 2];
   });
-  const pairs = LINKS.filter((l) => center[l.a] && center[l.b]).map((l) => [l.a, l.b]);
+  const pairs = LINKS.filter((l) => center[l.a] && center[l.b]).map((l) => [l.a, l.b, "manual"]);
 
   // URL の文字の中心（置いた後の実際の大きさから計算する）
   const board = $("board");
@@ -114,18 +114,22 @@ function drawLinks(list) {
       (el.offsetTop + el.offsetHeight / 2) / board.clientHeight,
     ];
   });
-  REF_POSTS.forEach((x) => { if (center["ref:" + x.ref_id] && center[x.post_id]) pairs.push(["ref:" + x.ref_id, x.post_id]); });
+  REF_POSTS.forEach((x) => { if (center["ref:" + x.ref_id] && center[x.post_id]) pairs.push(["ref:" + x.ref_id, x.post_id, "ref"]); });
 
   // 自動：仲間が2枚以上いる項目だけを候補にして、1つをランダムに選ぶ
   const groupsOf = (key) => {
     const g = {};
-    list.forEach((p) => { const v = p[key]; if (v) (g[v] = g[v] || []).push(p.id); });
+    list.forEach((p) => {
+      let v = p[key];
+      if (key === "title" && v) v = v.replace(/\s+/g, "");   // 見出しは空白の違いを無視して比べる
+      if (v) (g[v] = g[v] || []).push(p.id);
+    });
     return Object.values(g).filter((ids) => ids.length >= 2);
   };
   const candidates = AUTO_KEYS.filter((k) => groupsOf(k).length);
   if (candidates.length) {
     const key = candidates[Math.floor(Math.random() * candidates.length)];
-    groupsOf(key).forEach((ids) => pairs.push(...nearestTree(ids, center)));
+    groupsOf(key).forEach((ids) => nearestTree(ids, center).forEach(([a, b]) => pairs.push([a, b, key])));
   }
 
   if (!pairs.length) return;

@@ -299,22 +299,68 @@ function refPosNear(post) {
    そのため、線はつないだ掲示物の上には決して重ならず、
    2枚より下にある掲示物（大きな掲示物など）の上では見える。
    掲示物の重なりの高さ（z-index）は 2, 4, 6… の偶数にして、線は奇数（掲示物の1つ下）を使う。
-   pairs：[[id, id], …]、center：id → [横, 縦]（掲示面に対する割合）、zOf：id → 掲示物の高さ */
+   pairs：[[id, id, 線の種類], …]、center：id → [横, 縦]（掲示面に対する割合）、zOf：id → 掲示物の高さ */
+
+// つながりの種類ごとの線の形（数値は画面上の px）
+//   line：直線　dot：点線　dash：破線　wave：なみ線　zigzag：ギザギザ線　chain：一点鎖線
+const LINE_KIND = {
+  manual: "line",        // 自分でつないだもの
+  ref: "dot",            // URL の札
+  photo_group: "wave",   // 同じ写真から取り込んだもの
+  place: "zigzag",       // 同じ撮影場所
+  shot: "dash",          // 同じ撮影時期
+  title: "chain",        // 同じ見出し
+};
+const WAVE_LENGTH_PX = 14, WAVE_HEIGHT_PX = 3;     // なみ線：1つの波の長さ、振れ幅
+const ZIGZAG_LENGTH_PX = 8, ZIGZAG_HEIGHT_PX = 3;  // ギザギザ線：1つの山の長さ、振れ幅
+const DASH_PATTERN = { dot: "1 3", dash: "6 4", chain: "10 3 1 3" };
+
 function drawLineLayers(board, pairs, center, zOf) {
   const NS = "http://www.w3.org/2000/svg";
-  pairs.forEach(([a, b]) => {
+  // 掲示面と同じ縦横比の座標にする（なみ線などの形がゆがまないように）
+  const W = 1000, H = 1000 * board.clientHeight / board.clientWidth;
+  const k = W / board.clientWidth;   // 画面の 1px が座標でいくつか
+  pairs.forEach(([a, b, kind]) => {
+    const shape = LINE_KIND[kind] || "line";
     const svg = document.createElementNS(NS, "svg");
     svg.setAttribute("class", "links");
-    svg.setAttribute("viewBox", "0 0 1000 1000");
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
     svg.setAttribute("preserveAspectRatio", "none");
     svg.setAttribute("aria-hidden", "true");
     svg.style.zIndex = Math.min(zOf(a), zOf(b)) - 1;
-    const line = document.createElementNS(NS, "line");
-    line.setAttribute("x1", center[a][0] * 1000); line.setAttribute("y1", center[a][1] * 1000);
-    line.setAttribute("x2", center[b][0] * 1000); line.setAttribute("y2", center[b][1] * 1000);
-    svg.appendChild(line);
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", linePath(shape, center[a][0] * W, center[a][1] * H, center[b][0] * W, center[b][1] * H, k));
+    if (DASH_PATTERN[shape]) path.setAttribute("stroke-dasharray", DASH_PATTERN[shape]);
+    svg.appendChild(path);
     board.appendChild(svg);
   });
+}
+
+// 線の形を path の d にする
+function linePath(shape, x1, y1, x2, y2, k) {
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  const straight = "M" + x1 + " " + y1 + "L" + x2 + " " + y2;
+  if (shape !== "wave" && shape !== "zigzag") return straight;
+  const ux = (x2 - x1) / len, uy = (y2 - y1) / len;   // 線の向き
+  const nx = -uy, ny = ux;                            // 線に直角な向き
+  const at = (t, off) => [x1 + ux * t + nx * off, y1 + uy * t + ny * off];
+  const step = (shape === "wave" ? WAVE_LENGTH_PX : ZIGZAG_LENGTH_PX) * k;
+  const amp = (shape === "wave" ? WAVE_HEIGHT_PX : ZIGZAG_HEIGHT_PX) * k;
+  const n = Math.max(1, Math.round(len / step));      // 端がぴったり終わるように山の数を整える
+  const seg = len / n;
+  let d = "M" + x1 + " " + y1;
+  for (let i = 0; i < n; i++) {
+    const side = i % 2 ? -1 : 1;
+    const end = at(seg * (i + 1), 0);
+    if (shape === "wave") {
+      const c = at(seg * (i + 0.5), amp * 2 * side);   // 2次曲線の制御点（振れ幅の2倍で、曲線の頂点が振れ幅になる）
+      d += "Q" + c[0] + " " + c[1] + " " + end[0] + " " + end[1];
+    } else {
+      const top = at(seg * (i + 0.5), amp * side);
+      d += "L" + top[0] + " " + top[1] + "L" + end[0] + " " + end[1];
+    }
+  }
+  return d;
 }
 
 /* ---------- ギザギザの見出し ---------- */

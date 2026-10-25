@@ -195,70 +195,8 @@ function openViewer(post) {
 }
 
 
-/* ---------- 4. 申請書 ---------- */
-const PAPERS = [["白", "#ffffff"], ["黄", "#fff3a6"], ["桃", "#ffd3dc"], ["水色", "#cfeaf7"], ["若草", "#ddf0c4"]];
-const INKS = [["赤", "#d8262f"], ["青", "#1f4fb8"], ["緑", "#1d8a4a"], ["橙", "#ee7a12"], ["黒", "#1c1c1c"]];
-const draft = { paper: PAPERS[0][1], ink: INKS[0][1], size: "A4" };
-
-function buildChoices() {
-  const swatches = (wrap, list, key) => {
-    wrap.textContent = "";
-    list.forEach(([label, color]) => {
-      const b = document.createElement("button");
-      b.type = "button"; b.className = "swatch"; b.style.background = color;
-      b.title = label; b.setAttribute("aria-label", label);
-      b.setAttribute("aria-pressed", String(draft[key] === color));
-      b.addEventListener("click", () => { draft[key] = color; buildChoices(); preview(); });
-      wrap.appendChild(b);
-    });
-  };
-  swatches($("paper-sw"), PAPERS, "paper");
-  swatches($("ink-sw"), INKS, "ink");
-  const seg = $("size-seg");
-  seg.textContent = "";
-  Object.keys(TEXT_SIZES).forEach((s) => {
-    const b = document.createElement("button");
-    b.type = "button"; b.textContent = s;
-    b.setAttribute("aria-pressed", String(draft.size === s));
-    b.addEventListener("click", () => { draft.size = s; buildChoices(); preview(); });
-    seg.appendChild(b);
-  });
-}
-
-function readForm() {
-  return { title: $("f-title").value.trim(), body: $("f-body").value.trim(), name: $("f-name").value.trim(),
-           paper: draft.paper, ink: draft.ink, size: draft.size };
-}
-
-function preview() {
-  const data = drawTextFlyer(readForm(), 240);
-  const c = $("apply-preview");
-  c.width = data.width; c.height = data.height;
-  c.getContext("2d").putImageData(data, 0, 0);
-}
-
-["f-title", "f-body", "f-name"].forEach((id) => $(id).addEventListener("input", preview));
-
-$("apply-open").addEventListener("click", () => {
-  $("apply-msg").textContent = ""; $("apply-msg").className = "msg";
-  buildChoices(); preview();
-  $("apply").hidden = false;
-  $("f-title").focus();
-});
-
-$("apply-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const msg = $("apply-msg");
-  const data = readForm();
-  if (!data.title) { msg.className = "msg err"; msg.textContent = "見出しを入力してください。"; return; }
-  $("apply-send").disabled = true;
-  const { error } = await sb.from("requests").insert({ ...data, status: "pending" });
-  $("apply-send").disabled = false;
-  if (error) { msg.className = "msg err"; msg.textContent = "申請を送れませんでした（" + error.message + "）。"; return; }
-  msg.className = "msg";
-  msg.textContent = "申請を受け付けました。管理者の確認後に掲示されます。";
-  $("f-title").value = ""; $("f-body").value = ""; preview();
-});
+/* ---------- 4. 申請書 ----------
+   文字で掲示物を作る申請はやめた。「掲示を申請する」は写真の投稿ページ（submit.html）を開く */
 
 
 /* ---------- 5. 確認用スライダー ---------- */

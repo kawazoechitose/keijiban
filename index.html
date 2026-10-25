@@ -25,8 +25,8 @@
   <header class="head">
     <h1 id="title"><span class="hidden-text">掲示板</span></h1>
     <div class="actions">
-      <button class="btn" id="apply-open" type="button">掲示を申請する</button>
-      <a class="btn" href="submit.html" style="color:inherit;text-decoration:none">写真を投稿する</a>
+      <!-- 掲示の申請：町の掲示板などで撮った写真を送る投稿ページへ -->
+      <a class="btn" href="submit.html" style="color:inherit;text-decoration:none">掲示を申請する</a>
       <!-- 管理者としてログインしているブラウザでだけ表示される -->
       <a class="btn" id="admin-link" href="admin.html" hidden style="color:inherit;text-decoration:none">管理ページ</a>
     </div>
@@ -50,26 +50,6 @@
       <canvas id="viewer-canvas"></canvas>
       <dl class="meta" id="viewer-info"></dl>
     </div>
-  </div>
-
-  <!-- 申請書 -->
-  <div class="scrim" id="apply" hidden>
-    <form class="sheet" id="apply-form" novalidate>
-      <div class="bar"><span>掲示申請書</span><button class="btn" data-close="apply" type="button">閉じる</button></div>
-      <div class="form-grid">
-        <div class="fields">
-          <label class="field" for="f-title">見出し <small>24字まで</small><input id="f-title" maxlength="24" placeholder="例：探しています"></label>
-          <label class="field" for="f-body">本文 <small>200字まで</small><textarea id="f-body" maxlength="200"></textarea></label>
-          <label class="field" for="f-name">掲示者名 <small>任意。空欄なら「匿名」</small><input id="f-name" maxlength="20"></label>
-          <div class="field">用紙の色<div class="swatches" id="paper-sw"></div></div>
-          <div class="field">見出しの色<div class="swatches" id="ink-sw"></div></div>
-          <div class="field">大きさ<div class="seg" id="size-seg"></div></div>
-        </div>
-        <div class="preview"><canvas id="apply-preview"></canvas></div>
-      </div>
-      <p class="msg" id="apply-msg"></p>
-      <div class="row"><span class="msg">申請内容は管理者だけが見ます。</span><button class="btn" id="apply-send" type="submit">申請する</button></div>
-    </form>
   </div>
 
   <!-- Supabase の部品（読み込む順番：部品 → 設定 → 共通 → このページ） -->

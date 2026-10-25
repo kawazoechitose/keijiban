@@ -10,6 +10,8 @@ const $ = (id) => document.getElementById(id);
 // 保存する画像の長辺の上限（px）と画質（0〜1）
 const SAVE_LONG_SIDE = 1600;
 const SAVE_QUALITY = 0.85;
+// 読み込んだ写真を作業用に縮める長辺の上限（px）。保存は SAVE_LONG_SIDE なので、これより大きくても画質は上がらない
+const WORK_LONG_SIDE = 2400;
 
 
 /* ---------- 撮影時期 ----------
@@ -225,9 +227,12 @@ $("photo-file").addEventListener("change", (e) => {
     URL.revokeObjectURL(url);
     T.photo = img; T.ref = null; T.items = []; T.cur = []; T.seq = 0;
     const c = document.createElement("canvas");
-    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    // 大きな写真（スマホの写真など）はそのままだと変形の作業に重すぎるため、作業用に縮める
+    const r = Math.min(1, WORK_LONG_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+    c.width = Math.round(img.naturalWidth * r); c.height = Math.round(img.naturalHeight * r);
     const x = c.getContext("2d", { willReadFrequently: true });
-    x.drawImage(img, 0, 0);
+    x.imageSmoothingQuality = "high";
+    x.drawImage(img, 0, 0, c.width, c.height);
     T.orig = x.getImageData(0, 0, c.width, c.height);
     T.full = T.orig;   // 「切り詰めを戻す」用に、読み込んだ時の写真を取っておく
     T.group = crypto.randomUUID();   // 同じ写真から取り込んだ掲示物に付ける共通の印（関連付けの線に使う）

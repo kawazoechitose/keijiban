@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>掲示板 写真の投稿</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-page">
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="alias" color-interpolation-filters="sRGB"><feComponentTransfer>
+      <feFuncR type="discrete" tableValues="0.0392 1"/><feFuncG type="discrete" tableValues="0.1725 1"/>
+      <feFuncB type="discrete" tableValues="0.3333 1"/><feFuncA type="discrete" tableValues="0 1"/>
+    </feComponentTransfer></filter>
+    <filter id="alias2" color-interpolation-filters="sRGB"><feComponentTransfer>
+      <feFuncR type="discrete" tableValues="0 0 0 0.753 0.753 0.753 0.753 1"/>
+      <feFuncG type="discrete" tableValues="0 0 0 0.753 0.753 0.753 0.753 1"/>
+      <feFuncB type="discrete" tableValues="0 0 0 0.753 0.753 0.753 0.753 1"/>
+      <feFuncA type="discrete" tableValues="0 1"/>
+    </feComponentTransfer></filter>
+  </svg>
+
+  <header class="head">
+    <h1 id="title"><span class="hidden-text">掲示板</span></h1>
+    <div class="actions">
+      <a class="btn" href="index.html" style="color:inherit;text-decoration:none">掲示板に戻る</a>
+    </div>
+  </header>
+
+  <section class="sheet">
+    <div class="bar"><span>写真の投稿について</span></div>
+    <p class="msg">町の掲示板で見つけた掲示物の写真を送ってください。1枚の写真から、何枚でも切り抜いて送れます。</p>
+    <p class="msg">送られた写真は自動で確認したあと、管理者が確認してから掲示します。掲示されるまで時間がかかることがあります。人の顔や個人の連絡先が写っている場合は、切り詰めて外してください。</p>
+  </section>
+
+    <!-- 写真を切り抜いて送る（管理ページの取り込み画面と同じ部品） -->
+    <section class="sheet wide">
+      <div class="bar"><span>写真を投稿する</span></div>
+      <div class="toolbar">
+        <label class="btn" for="photo-file" style="cursor:pointer">写真を選ぶ</label>
+        <input id="photo-file" type="file" accept="image/*" hidden>
+        <button class="btn" id="mode-ref" type="button" disabled hidden>基準を指定</button>
+        <button class="btn" id="mode-item" type="button" disabled>掲示物を追加</button>
+        <button class="btn" id="mode-crop" type="button" disabled>切り詰める</button>
+        <button class="btn" id="crop-reset" type="button" disabled>切り詰めを戻す</button>
+        <button class="btn" id="mode-warp" type="button" disabled>変形</button>
+        <button class="btn" id="warp-reset" type="button" disabled>変形を戻す</button>
+        <span class="sep"></span>
+        <span>表示</span>
+        <div class="seg" id="zoom-seg"></div>
+      </div>
+      <p class="hint" id="tool-hint">ストリートビューのスクリーンショットや撮影した写真を選んでください。</p>
+      <div class="tool-grid">
+        <div class="pick-wrap" id="pick-wrap"><canvas id="pick-canvas" width="10" height="10"></canvas></div>
+        <div class="panel">
+          <!-- 基準の指定は使わない（大きさは掲示時にランダムに決まり、縦横比は切り抜いた画像の比率を使う） -->
+          <div class="box" hidden>
+            <h3>基準</h3>
+            <p class="hint" id="ref-state">未指定。寸法の分かるもの（掲示物1枚、または掲示面）の四隅をクリックします。</p>
+            <div class="meta-grid" id="ref-fields" hidden>
+              <label class="field" for="ref-size">基準の大きさ<select id="ref-size"></select></label>
+              <label class="field" for="ref-w" id="ref-w-label" hidden>幅 mm<input id="ref-w" type="number" min="10" value="1230"></label>
+              <label class="field" for="ref-h" id="ref-h-label" hidden>高さ mm<input id="ref-h" type="number" min="10" value="780"></label>
+            </div>
+          </div>
+          <div class="box">
+            <h3>写真の情報</h3>
+            <div class="meta-grid">
+              <label class="field" for="m-place">撮影場所<input id="m-place" placeholder="例：西池袋 丸山町会"></label>
+              <label class="field" for="m-shot">撮影時期 <small id="m-shot-note">写真に撮影日が記録されていれば自動で入ります</small><input id="m-shot" type="month"></label>
+              <label class="field" for="m-source">出典<select id="m-source"><option>ストリートビュー</option><option>自分で撮影</option><option>その他</option></select></label>
+            </div>
+          </div>
+          <div class="box">
+            <h3>掲示物 <span id="item-count">0</span>枚</h3>
+            <div class="items" id="items"><p class="hint">「掲示物を追加」を押して、掲示物の四隅をクリックします。</p></div>
+          </div>
+          <p class="msg" id="tool-msg"></p>
+          <button class="btn" id="post-all" type="button" disabled>まとめて送信する</button>
+        </div>
+      </div>
+    </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="common.js"></script>
+  <script src="tool.js"></script>
+  <script src="submit.js"></script>
+</body>
+</html>

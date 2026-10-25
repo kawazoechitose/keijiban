@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>掲示板</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 文字の縁をギザギザにするフィルター -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="alias" color-interpolation-filters="sRGB"><feComponentTransfer>
+      <feFuncR type="discrete" tableValues="0.0392 1"/><feFuncG type="discrete" tableValues="0.1725 1"/>
+      <feFuncB type="discrete" tableValues="0.3333 1"/><feFuncA type="discrete" tableValues="0 1"/>
+    </feComponentTransfer></filter>
+    <filter id="alias2" color-interpolation-filters="sRGB"><feComponentTransfer>
+      <feFuncR type="discrete" tableValues="0 0 0 0.753 0.753 0.753 0.753 1"/>
+      <feFuncG type="discrete" tableValues="0 0 0 0.753 0.753 0.753 0.753 1"/>
+      <feFuncB type="discrete" tableValues="0 0 0 0.753 0.753 0.753 0.753 1"/>
+      <feFuncA type="discrete" tableValues="0 1"/>
+    </feComponentTransfer></filter>
+  </svg>
+
+  <header class="head">
+    <h1 id="title"><span class="hidden-text">掲示板</span></h1>
+    <div class="actions">
+      <button class="btn" id="apply-open" type="button">掲示を申請する</button>
+      <a class="btn" href="submit.html" style="color:inherit;text-decoration:none">写真を投稿する</a>
+      <!-- 管理者としてログインしているブラウザでだけ表示される -->
+      <a class="btn" id="admin-link" href="admin.html" hidden style="color:inherit;text-decoration:none">管理ページ</a>
+    </div>
+  </header>
+
+  <!-- 確認用スライダー（管理者としてログインしているブラウザで、アドレスの最後に #kanri を付けたときだけ出る） -->
+  <div id="admin" hidden>
+    <label for="age">経過日数を足して確認（表示だけ）</label>
+    <input id="age" type="range" min="0" max="1095" step="1" value="0">
+    <output id="age-out">+0日</output>
+  </div>
+
+  <!-- 掲示面。画面が狭いときは、掲示面を縮めずに横へスクロールして見る -->
+  <div class="board-scroll"><main id="board"></main></div>
+  <p class="note" id="note" hidden></p>
+
+  <!-- 拡大表示 -->
+  <div class="scrim" id="viewer" hidden>
+    <div class="sheet">
+      <div class="bar"><span id="viewer-days"></span><button class="btn" data-close="viewer" type="button">閉じる</button></div>
+      <canvas id="viewer-canvas"></canvas>
+      <dl class="meta" id="viewer-info"></dl>
+    </div>
+  </div>
+
+  <!-- 申請書 -->
+  <div class="scrim" id="apply" hidden>
+    <form class="sheet" id="apply-form" novalidate>
+      <div class="bar"><span>掲示申請書</span><button class="btn" data-close="apply" type="button">閉じる</button></div>
+      <div class="form-grid">
+        <div class="fields">
+          <label class="field" for="f-title">見出し <small>24字まで</small><input id="f-title" maxlength="24" placeholder="例：探しています"></label>
+          <label class="field" for="f-body">本文 <small>200字まで</small><textarea id="f-body" maxlength="200"></textarea></label>
+          <label class="field" for="f-name">掲示者名 <small>任意。空欄なら「匿名」</small><input id="f-name" maxlength="20"></label>
+          <div class="field">用紙の色<div class="swatches" id="paper-sw"></div></div>
+          <div class="field">見出しの色<div class="swatches" id="ink-sw"></div></div>
+          <div class="field">大きさ<div class="seg" id="size-seg"></div></div>
+        </div>
+        <div class="preview"><canvas id="apply-preview"></canvas></div>
+      </div>
+      <p class="msg" id="apply-msg"></p>
+      <div class="row"><span class="msg">申請内容は管理者だけが見ます。</span><button class="btn" id="apply-send" type="submit">申請する</button></div>
+    </form>
+  </div>
+
+  <!-- Supabase の部品（読み込む順番：部品 → 設定 → 共通 → このページ） -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="common.js"></script>
+  <script src="board.js"></script>
+</body>
+</html>

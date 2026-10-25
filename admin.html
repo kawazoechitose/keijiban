@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>掲示板 管理</title>
+  <!-- 検索エンジンに載せない -->
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-page">
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="alias" color-interpolation-filters="sRGB"><feComponentTransfer>
+      <feFuncR type="discrete" tableValues="0.0392 1"/><feFuncG type="discrete" tableValues="0.1725 1"/>
+      <feFuncB type="discrete" tableValues="0.3333 1"/><feFuncA type="discrete" tableValues="0 1"/>
+    </feComponentTransfer></filter>
+    <filter id="alias2" color-interpolation-filters="sRGB"><feComponentTransfer>
+      <feFuncR type="discrete" tableValues="0 0 0 0.753 0.753 0.753 0.753 1"/>
+      <feFuncG type="discrete" tableValues="0 0 0 0.753 0.753 0.753 0.753 1"/>
+      <feFuncB type="discrete" tableValues="0 0 0 0.753 0.753 0.753 0.753 1"/>
+      <feFuncA type="discrete" tableValues="0 1"/>
+    </feComponentTransfer></filter>
+  </svg>
+
+  <header class="head">
+    <h1 id="title"><span class="hidden-text">掲示板</span></h1>
+    <div class="actions">
+      <a class="btn" href="index.html" style="color:inherit;text-decoration:none">掲示板を見る</a>
+      <button class="btn" id="logout" type="button" hidden>ログアウト</button>
+    </div>
+  </header>
+
+  <!-- ログイン -->
+  <form class="sheet" id="login" novalidate>
+    <div class="bar"><span>管理者ログイン</span></div>
+    <label class="field" for="email">メールアドレス<input id="email" type="email" autocomplete="username"></label>
+    <label class="field" for="password">パスワード<input id="password" type="password" autocomplete="current-password"></label>
+    <p class="msg" id="login-msg"></p>
+    <div class="row"><span></span><button class="btn" type="submit">ログイン</button></div>
+  </form>
+
+  <div id="admin-area" hidden>
+
+    <!-- 申請一覧 -->
+    <section class="sheet">
+      <div class="bar"><span>申請一覧</span><button class="btn" id="reload-requests" type="button">再読み込み</button></div>
+      <div class="list" id="requests"></div>
+    </section>
+
+    <!-- 写真の投稿（自動判定を通ったもの） -->
+    <section class="sheet">
+      <div class="bar"><span>写真の投稿（確認待ち）</span><button class="btn" id="reload-photo-requests" type="button">再読み込み</button></div>
+      <p class="hint">一般の人から投稿され、自動判定を通った写真です。「許可して掲示」で掲示板に出ます。</p>
+      <div class="list" id="photo-requests"></div>
+    </section>
+
+    <!-- 写真から取り込む -->
+    <section class="sheet wide">
+      <div class="bar"><span>写真から取り込む</span></div>
+      <div class="toolbar">
+        <label class="btn" for="photo-file" style="cursor:pointer">写真を選ぶ</label>
+        <input id="photo-file" type="file" accept="image/*" hidden>
+        <button class="btn" id="mode-ref" type="button" disabled hidden>基準を指定</button>
+        <button class="btn" id="mode-item" type="button" disabled>掲示物を追加</button>
+        <button class="btn" id="mode-crop" type="button" disabled>切り詰める</button>
+        <button class="btn" id="crop-reset" type="button" disabled>切り詰めを戻す</button>
+        <button class="btn" id="mode-warp" type="button" disabled>変形</button>
+        <button class="btn" id="warp-reset" type="button" disabled>変形を戻す</button>
+        <span class="sep"></span>
+        <span>表示</span>
+        <div class="seg" id="zoom-seg"></div>
+      </div>
+      <p class="hint" id="tool-hint">ストリートビューのスクリーンショットや撮影した写真を選んでください。</p>
+      <div class="tool-grid">
+        <div class="pick-wrap" id="pick-wrap"><canvas id="pick-canvas" width="10" height="10"></canvas></div>
+        <div class="panel">
+          <!-- 基準の指定は使わない（大きさは掲示時にランダムに決まり、縦横比は切り抜いた画像の比率を使う） -->
+          <div class="box" hidden>
+            <h3>基準</h3>
+            <p class="hint" id="ref-state">未指定。寸法の分かるもの（掲示物1枚、または掲示面）の四隅をクリックします。</p>
+            <div class="meta-grid" id="ref-fields" hidden>
+              <label class="field" for="ref-size">基準の大きさ<select id="ref-size"></select></label>
+              <label class="field" for="ref-w" id="ref-w-label" hidden>幅 mm<input id="ref-w" type="number" min="10" value="1230"></label>
+              <label class="field" for="ref-h" id="ref-h-label" hidden>高さ mm<input id="ref-h" type="number" min="10" value="780"></label>
+            </div>
+          </div>
+          <div class="box">
+            <h3>写真の情報</h3>
+            <div class="meta-grid">
+              <label class="field" for="m-place">撮影場所<input id="m-place" placeholder="例：西池袋 丸山町会"></label>
+              <label class="field" for="m-shot">撮影時期 <small id="m-shot-note">写真に撮影日が記録されていれば自動で入ります</small><input id="m-shot" type="month"></label>
+              <label class="field" for="m-source">出典<select id="m-source"><option>ストリートビュー</option><option>自分で撮影</option><option>その他</option></select></label>
+            </div>
+          </div>
+          <div class="box">
+            <h3>掲示物 <span id="item-count">0</span>枚</h3>
+            <div class="items" id="items"><p class="hint">「掲示物を追加」を押して、掲示物の四隅をクリックします。</p></div>
+          </div>
+          <p class="msg" id="tool-msg"></p>
+          <button class="btn" id="post-all" type="button" disabled>まとめて掲示する</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 関連する情報（URL） -->
+    <section class="sheet">
+      <div class="bar"><span>関連する情報（URL）</span><button class="btn" id="reload-refs" type="button">再読み込み</button></div>
+      <p class="hint">見つけたウェブサイトの URL を、掲示板の上に文字として置き、関連する掲示物と白い線で結びます。</p>
+      <div class="meta-grid">
+        <label class="field" for="r-url">URL<input id="r-url" type="url" placeholder="https://"></label>
+        <label class="field" for="r-label">表示する文字 <small>任意。空欄なら URL をそのまま表示</small><input id="r-label"></label>
+      </div>
+      <div class="row"><p class="msg" id="r-msg"></p><button class="btn" id="r-add" type="button">追加する</button></div>
+      <div class="list" id="refs"></div>
+    </section>
+
+    <!-- 掲示中 -->
+    <section class="sheet">
+      <div class="bar"><span>掲示中の掲示物</span><span><button class="btn" id="replace-all" type="button">すべての位置を決め直す</button> <button class="btn" id="reload-posts" type="button">再読み込み</button></span></div>
+      <p class="msg" id="replace-msg"></p>
+      <div class="list" id="posts"></div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="common.js"></script>
+  <script src="tool.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

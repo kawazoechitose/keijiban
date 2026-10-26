@@ -276,6 +276,18 @@ function moveButton(post, m) {
    つなぎたい掲示物の「つなぐ」を順に押して選び、画面下の「選んだ順につなぐ」で一度につなぐ。
    3枚選ぶと 1枚目–2枚目、2枚目–3枚目 の2本になる（選んだ順に1本の線でたどる形）。
    掲示中の一覧と、掲示板ごとの時系列（どの掲示板でも）のどこからでも選べる */
+// 画面下の帯。admin.html に無い場合（古い admin.html のまま）でも動くように、ここで作る
+(function ensureLinkBar() {
+  if ($("link-bar")) return;
+  const bar = document.createElement("div");
+  bar.className = "link-bar"; bar.id = "link-bar"; bar.hidden = true;
+  bar.innerHTML = '<span id="link-count"></span>' +
+    '<button class="btn" id="link-go" type="button">選んだ順につなぐ</button>' +
+    '<button class="btn" id="link-cancel" type="button">選ぶのをやめる</button>' +
+    '<span class="msg" id="link-msg"></span>';
+  document.body.appendChild(bar);
+})();
+
 function linkButton(post) {
   const ln = button("つなぐ");
   ln.dataset.linkPost = post.id;

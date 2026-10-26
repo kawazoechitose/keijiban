@@ -115,6 +115,14 @@
       <div class="list" id="refs"></div>
     </section>
 
+    <!-- 掲示板ごとの時系列（管理者だけが見る） -->
+    <section class="sheet wide">
+      <div class="bar"><span>掲示板ごとの時系列</span><button class="btn" id="reload-history" type="button">再読み込み</button></div>
+      <p class="hint">撮影場所が同じものを1つの掲示板として、撮影時期の古い順に並べます。同じ写真から取り込んだものは、まとめて並べます。色は褪せる前の状態で表示します。</p>
+      <div class="row"><label class="field" for="h-place">掲示板（撮影場所）<select id="h-place"></select></label></div>
+      <div id="history"></div>
+    </section>
+
     <!-- 掲示中 -->
     <section class="sheet">
       <div class="bar"><span>掲示中の掲示物</span><span><button class="btn" id="replace-all" type="button">すべての位置を決め直す</button> <button class="btn" id="reload-posts" type="button">再読み込み</button></span></div>

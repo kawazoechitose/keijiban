@@ -135,6 +135,7 @@ $("reload-requests").addEventListener("click", loadRequests);
 let linkFrom = null;   // 「つなぐ」を押した1枚目の掲示物
 
 async function loadPosts() {
+  loadHistory();   // 掲示物が変わったときに、時系列の表示も作り直す
   const box = $("posts");
   box.textContent = "";
   const { data, error } = await sb.from("posts").select("*").order("posted_at", { ascending: false });
@@ -323,6 +324,89 @@ function editForm(post, m) {
   return f;
 }
 $("reload-posts").addEventListener("click", loadPosts);
+
+
+/* ---------- 掲示板ごとの時系列 ----------
+   撮影場所（place）が同じものを1つの掲示板とみなし、撮影時期（shot）の古い順に並べる。
+   同じ時期の中は、同じ写真から取り込んだもの（photo_group）ごとにまとめる。管理ページでだけ見られる */
+let HISTORY = [];
+
+// 「2019年7月」→ 201907（並べ替え用）。読めないものは一番後ろ
+function shotKey(text) {
+  const m = /(\d{4})\s*年\s*(\d{1,2})?/.exec(text || "");
+  return m ? Number(m[1]) * 100 + Number(m[2] || 0) : 999999;
+}
+// 撮影場所の比べ方：前後と途中の空白の違いは無視する
+const placeKey = (p) => (p.place || "").replace(/\s+/g, "");
+
+async function loadHistory() {
+  const sel = $("h-place");
+  const before = sel.value;
+  const { data, error } = await sb.from("posts").select("*").order("posted_at", { ascending: true });
+  if (error) { $("history").textContent = "読み込めませんでした（" + error.message + "）"; return; }
+  HISTORY = data;
+  // 掲示板の一覧（掲示物の多い順）
+  const count = {}, label = {};
+  data.forEach((p) => { const k = placeKey(p); count[k] = (count[k] || 0) + 1; if (!(k in label)) label[k] = p.place || ""; });
+  const keys = Object.keys(count).sort((a, b) => (a === "") - (b === "") || count[b] - count[a]);
+  sel.textContent = "";
+  keys.forEach((k) => {
+    const o = document.createElement("option");
+    o.value = k;
+    o.textContent = (k ? label[k] : "（撮影場所なし）") + "（" + count[k] + "枚）";
+    sel.append(o);
+  });
+  if (keys.includes(before)) sel.value = before;
+  showHistory();
+}
+
+function showHistory() {
+  const box = $("history");
+  box.textContent = "";
+  const k = $("h-place").value;
+  const list = HISTORY.filter((p) => placeKey(p) === k);
+  if (!list.length) { box.append(note("掲示物がありません。")); return; }
+  // 撮影時期ごとに分ける
+  const byShot = {};
+  list.forEach((p) => { const s = p.shot || ""; (byShot[s] = byShot[s] || []).push(p); });
+  Object.keys(byShot).sort((a, b) => shotKey(a) - shotKey(b) || a.localeCompare(b)).forEach((shot) => {
+    const sec = document.createElement("div");
+    sec.className = "h-period";
+    const h = document.createElement("h3");
+    h.textContent = (shot || "撮影時期なし") + "　" + byShot[shot].length + "枚";
+    sec.append(h);
+    // 同じ写真から取り込んだものごとにまとめる
+    const byPhoto = {};
+    byShot[shot].forEach((p) => { const g = p.photo_group || "single:" + p.id; (byPhoto[g] = byPhoto[g] || []).push(p); });
+    Object.values(byPhoto).forEach((group) => {
+      const row = document.createElement("div");
+      row.className = "h-photo";
+      group.forEach((p) => {
+        const fig = document.createElement("figure");
+        const cv = document.createElement("canvas");
+        getSource(p, 400).then((src) => {
+          cv.width = src.width; cv.height = src.height;
+          const ctx = cv.getContext("2d");
+          if (src instanceof ImageData) ctx.putImageData(src, 0, 0); else ctx.drawImage(src, 0, 0);
+        }).catch(() => {});
+        if (p.kind === "photo" && p.image_path) {
+          cv.style.cursor = "pointer";
+          cv.title = "元の画像を別のタブで開く";
+          cv.addEventListener("click", () => window.open(imageUrl(p.image_path), "_blank", "noopener"));
+        }
+        const cap = document.createElement("figcaption");
+        cap.textContent = (p.title || "（見出しなし）") + "\n掲示日 " + fmtDate(p.posted_at);
+        fig.append(cv, cap);
+        row.append(fig);
+      });
+      sec.append(row);
+    });
+    box.append(sec);
+  });
+}
+
+$("h-place").addEventListener("change", showHistory);
+$("reload-history").addEventListener("click", loadHistory);
 
 // すべての掲示物の大きさと位置を、古い順に決め直す（掲示面の大きさを変えた後などに使う）
 $("replace-all").addEventListener("click", async () => {

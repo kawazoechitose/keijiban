@@ -250,9 +250,19 @@ window.addEventListener("resize", () => drawTitle($("title")));
 window.addEventListener("hashchange", setupAdmin);
 // 「ランダムに褪せさせる」：掲示物ごとに 0〜RANDOM_FADE_MAX_DAYS 日のどれかを足して表示する（表示だけ。保存しない）
 // 押すたびに振り直す。スライダーの日数はその上にさらに足される
-const RANDOM_FADE_MAX_DAYS = 1095;
+// 下にある掲示物ほど多くの日数を足す（一番下が一番褪せ、一番上はほとんど褪せない）。
+// そのうえで、1枚ずつ少しランダムにばらつかせる
+const RANDOM_FADE_MAX_DAYS = 365;   // 一番下の掲示物に足す日数のおおよその上限
+const RANDOM_FADE_BIAS = 2;         // 大きいほど、上の方の掲示物が褪せにくくなる（1 で重なり順に均等）
+const RANDOM_FADE_JITTER = 0.4;     // ばらつきの大きさ（0 でばらつきなし。0.4 なら ±40%）
 $("rand-fade").addEventListener("click", () => {
-  POSTS.forEach((p) => { p.extra_days = Math.random() * RANDOM_FADE_MAX_DAYS; });
+  const n = POSTS.length;
+  // POSTS は古い順＝下から上の順に並んでいる
+  POSTS.forEach((p, i) => {
+    const depth = n > 1 ? (n - 1 - i) / (n - 1) : 0;   // 一番下 1 〜 一番上 0
+    const jitter = 1 + (Math.random() * 2 - 1) * RANDOM_FADE_JITTER;
+    p.extra_days = Math.max(0, Math.pow(depth, RANDOM_FADE_BIAS) * RANDOM_FADE_MAX_DAYS * jitter);
+  });
   $("rand-fade").textContent = "ランダムに振り直す";
   $("rand-reset").hidden = false;
   redrawAll();

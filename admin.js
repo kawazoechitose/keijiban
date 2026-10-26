@@ -170,15 +170,7 @@ async function loadPosts() {
     const m = document.createElement("p"); m.className = "msg";
 
     // 撤去
-    const rm = button("撤去する");
-    rm.addEventListener("click", async () => {
-      if (!rm.dataset.armed) { rm.dataset.armed = "1"; rm.textContent = "もう一度押すと撤去します"; return; }
-      rm.disabled = true;
-      const del = await sb.from("posts").delete().eq("id", post.id);
-      if (del.error) { fail(m, del.error, rm); return; }
-      if (post.image_path) await sb.storage.from(BUCKET).remove([post.image_path]);
-      loadPosts();
-    });
+    const rm = removeButton(post, m);
 
     // 位置を決め直す（大きさと位置をもう一度ランダムに決める）
     const mv = button("位置を決め直す");
@@ -289,8 +281,23 @@ async function loadPosts() {
   });
 }
 
+// 撤去ボタン（2回押すと撤去する）。掲示中の一覧と、掲示板ごとの時系列の両方で使う
+function removeButton(post, m) {
+  const rm = button("撤去する");
+  rm.addEventListener("click", async () => {
+    if (!rm.dataset.armed) { rm.dataset.armed = "1"; rm.textContent = "もう一度押すと撤去します"; return; }
+    rm.disabled = true;
+    const del = await sb.from("posts").delete().eq("id", post.id);
+    if (del.error) { fail(m, del.error, rm); return; }
+    if (post.image_path) await sb.storage.from(BUCKET).remove([post.image_path]);
+    loadPosts();
+  });
+  return rm;
+}
+
 // 写真の掲示物の編集欄：見出し・撮影場所・撮影時期・出典
-function editForm(post, m) {
+// idPrefix：同じ掲示物の編集欄を2か所に出しても、入力欄の id が重ならないようにする
+function editForm(post, m, idPrefix = "e") {
   const f = document.createElement("div");
   f.className = "edit";
   const field = (label, value, id) => {
@@ -298,14 +305,14 @@ function editForm(post, m) {
     const i = document.createElement("input"); i.className = "mini"; i.id = id; i.value = value || "";
     l.append(i); f.append(l); return i;
   };
-  const title = field("見出し", post.title, "e-title-" + post.id);
-  const place = field("撮影場所", post.place, "e-place-" + post.id);
-  const shot = field("撮影時期", "", "e-shot-" + post.id);
+  const title = field("見出し", post.title, idPrefix + "-title-" + post.id);
+  const place = field("撮影場所", post.place, idPrefix + "-place-" + post.id);
+  const shot = field("撮影時期", "", idPrefix + "-shot-" + post.id);
   shot.type = "month";
   shot.value = textToMonth(post.shot);
 
   const srcL = document.createElement("label"); srcL.className = "field"; srcL.textContent = "出典";
-  const src = document.createElement("select"); src.className = "mini"; src.id = "e-src-" + post.id; srcL.htmlFor = src.id;
+  const src = document.createElement("select"); src.className = "mini"; src.id = idPrefix + "-src-" + post.id; srcL.htmlFor = src.id;
   ["ストリートビュー", "自分で撮影", "その他"].forEach((v) => { const o = document.createElement("option"); o.textContent = v; src.append(o); });
   if (post.source) src.value = post.source;
   srcL.append(src); f.append(srcL);
@@ -381,6 +388,11 @@ function showHistory() {
     Object.values(byPhoto).forEach((group) => {
       const row = document.createElement("div");
       row.className = "h-photo";
+      // 「内容を直す」を押した掲示物の編集欄を、この写真の枠の下に出す
+      const editArea = document.createElement("div");
+      editArea.className = "h-edit";
+      editArea.hidden = true;
+      let editing = null;
       group.forEach((p) => {
         const fig = document.createElement("figure");
         const cv = document.createElement("canvas");
@@ -396,10 +408,30 @@ function showHistory() {
         }
         const cap = document.createElement("figcaption");
         cap.textContent = (p.title || "（見出しなし）") + "\n掲示日 " + fmtDate(p.posted_at);
-        fig.append(cv, cap);
+        // 操作：内容を直す（写真から取り込んだものだけ）・撤去する
+        const m = document.createElement("p"); m.className = "msg";
+        const ops = document.createElement("div"); ops.className = "h-ops";
+        if (p.kind === "photo") {
+          const ed = button("内容を直す");
+          ed.addEventListener("click", () => {
+            row.querySelectorAll("figure").forEach((f) => f.classList.remove("on"));
+            if (editing === p.id) { editing = null; editArea.hidden = true; return; }
+            editing = p.id;
+            fig.classList.add("on");
+            const em = document.createElement("p"); em.className = "msg";
+            const title = document.createElement("h3");
+            title.textContent = "「" + (p.title || "見出しなし") + "」の内容を直す";
+            editArea.textContent = "";
+            editArea.append(title, editForm(p, em, "h"), em);
+            editArea.hidden = false;
+          });
+          ops.append(ed);
+        }
+        ops.append(removeButton(p, m));
+        fig.append(cv, cap, ops, m);
         row.append(fig);
       });
-      sec.append(row);
+      sec.append(row, editArea);
     });
     box.append(sec);
   });

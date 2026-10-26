@@ -132,7 +132,7 @@ $("reload-requests").addEventListener("click", loadRequests);
 
 /* ---------- 4. 掲示中の一覧 ---------- */
 
-let linkFrom = null;   // 「つなぐ」を押した1枚目の掲示物
+let linkSel = [];   // 「つなぐ」で選んだ掲示物の id（選んだ順）
 
 async function loadPosts() {
   loadHistory();   // 掲示物が変わったときに、時系列の表示も作り直す
@@ -151,12 +151,6 @@ async function loadPosts() {
   const titleOf = {};
   data.forEach((p) => { titleOf[p.id] = (p.title || "（見出しなし）") + "（" + fmtDate(p.posted_at) + "）"; });
   if (lres.error) box.append(note("関連付けを読み込めませんでした。update2.sql を実行したか確認してください。"));
-  if (linkFrom) {
-    const n = note("つなぐ相手の「この掲示物とつなぐ」を押してください。やめるときは「つなぐのをやめる」。");
-    n.className = "msg";
-    box.append(n);
-  }
-
   data.forEach((post) => {
     const row = document.createElement("div");
     row.className = "list-item";
@@ -178,17 +172,7 @@ async function loadPosts() {
     ops.append(mv);
 
     // 関連付け（手動）：1枚目で「つなぐ」→ 2枚目で「この掲示物とつなぐ」
-    const ln = button(linkFrom === post.id ? "つなぐのをやめる" : linkFrom ? "この掲示物とつなぐ" : "つなぐ");
-    ln.addEventListener("click", async () => {
-      if (!linkFrom) { linkFrom = post.id; loadPosts(); return; }
-      if (linkFrom === post.id) { linkFrom = null; loadPosts(); return; }
-      const [a, b] = [linkFrom, post.id].sort();   // 同じ組を二重に作らないよう、順番を揃える
-      linkFrom = null;
-      const ins = await sb.from("links").insert({ a, b });
-      if (ins.error && !/duplicate|unique/i.test(ins.error.message)) { fail(m, ins.error); return; }
-      loadPosts();
-    });
-    ops.append(ln);
+    ops.append(linkButton(post));
     // 写真から取り込んだ掲示物だけ、内容を直せる
     let form = null;
     if (post.kind === "photo") {
@@ -268,6 +252,7 @@ async function loadPosts() {
     row.append(cv, info);
     box.append(row);
   });
+  refreshLinkUI();
 }
 
 // 位置を決め直すボタン（大きさと位置をもう一度ランダムに決める）。掲示中の一覧と、掲示板ごとの時系列の両方で使う
@@ -286,6 +271,55 @@ function moveButton(post, m) {
   });
   return mv;
 }
+
+/* ---------- つなぐ（関連付け・手動） ----------
+   つなぎたい掲示物の「つなぐ」を順に押して選び、画面下の「選んだ順につなぐ」で一度につなぐ。
+   3枚選ぶと 1枚目–2枚目、2枚目–3枚目 の2本になる（選んだ順に1本の線でたどる形）。
+   掲示中の一覧と、掲示板ごとの時系列（どの掲示板でも）のどこからでも選べる */
+function linkButton(post) {
+  const ln = button("つなぐ");
+  ln.dataset.linkPost = post.id;
+  ln.addEventListener("click", () => {
+    const i = linkSel.indexOf(post.id);
+    if (i >= 0) linkSel.splice(i, 1); else linkSel.push(post.id);
+    $("link-msg").textContent = "";
+    refreshLinkUI();
+  });
+  return ln;
+}
+// 選んだ状態を、ボタンの文字・枠・画面下の帯に反映する
+function refreshLinkUI() {
+  document.querySelectorAll("[data-link-post]").forEach((b) => {
+    const i = linkSel.indexOf(b.dataset.linkPost);
+    b.textContent = i >= 0 ? (i + 1) + "番目（外す）" : "つなぐ";
+    const holder = b.closest("figure, .list-item");
+    if (holder) holder.classList.toggle("linking", i >= 0);
+  });
+  $("link-bar").hidden = !linkSel.length && !$("link-msg").textContent;   // つないだ結果の文字が出ている間も表示する
+  $("link-count").textContent = linkSel.length + "枚選択中" + (linkSel.length < 2 ? "（2枚以上選ぶとつなげます）" : "");
+  $("link-go").disabled = linkSel.length < 2;
+}
+$("link-go").addEventListener("click", async () => {
+  if (linkSel.length < 2) return;
+  const msg = $("link-msg");
+  $("link-go").disabled = true;
+  const rows = [];
+  for (let i = 0; i + 1 < linkSel.length; i++) {
+    const [a, b] = [linkSel[i], linkSel[i + 1]].sort();   // 同じ組を二重に作らないよう、順番を揃える
+    rows.push({ a, b });
+  }
+  let failed = 0;
+  for (const row of rows) {   // 1組ずつ保存する（すでにつながっている組があっても、ほかの組は保存する）
+    const ins = await sb.from("links").insert(row);
+    if (ins.error && !/duplicate|unique/i.test(ins.error.message)) failed++;
+  }
+  msg.className = failed ? "msg err" : "msg";
+  msg.textContent = failed ? failed + "組を保存できませんでした。" : rows.length + "本の線でつなぎました。";
+  linkSel = [];
+  refreshLinkUI();
+  loadPosts();
+});
+$("link-cancel").addEventListener("click", () => { linkSel = []; $("link-msg").textContent = ""; refreshLinkUI(); });
 
 // 撤去ボタン（2回押すと撤去する）。掲示中の一覧と、掲示板ごとの時系列の両方で使う
 function removeButton(post, m) {
@@ -414,7 +448,7 @@ function showHistory() {
         }
         const cap = document.createElement("figcaption");
         cap.textContent = (p.title || "（見出しなし）") + "\n掲示日 " + fmtDate(p.posted_at);
-        // 操作：内容を直す（写真から取り込んだものだけ）・位置を決め直す・撤去する
+        // 操作：内容を直す（写真から取り込んだものだけ）・つなぐ・位置を決め直す・撤去する
         const m = document.createElement("p"); m.className = "msg";
         const ops = document.createElement("div"); ops.className = "h-ops";
         if (p.kind === "photo") {
@@ -433,7 +467,7 @@ function showHistory() {
           });
           ops.append(ed);
         }
-        ops.append(moveButton(p, m), removeButton(p, m));
+        ops.append(linkButton(p), moveButton(p, m), removeButton(p, m));
         fig.append(cv, cap, ops, m);
         row.append(fig);
       });
@@ -441,6 +475,7 @@ function showHistory() {
     });
     box.append(sec);
   });
+  refreshLinkUI();
 }
 
 $("h-place").addEventListener("change", showHistory);

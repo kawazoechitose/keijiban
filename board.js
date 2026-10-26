@@ -218,9 +218,14 @@ function openViewer(post) {
 let adminReady = false;
 let isAdmin = false;   // 管理者としてログインしているか（showAdminLink で分かる）
 function setupAdmin() {
-  if (!isAdmin || location.hash !== "#kanri" || adminReady) return;
-  adminReady = true;
+  if (!isAdmin || location.hash !== "#kanri") return;
+  openSlider();
+}
+function openSlider() {
   $("admin").hidden = false;
+  $("kanri-toggle").classList.add("on");
+  if (adminReady) return;
+  adminReady = true;
   let waiting = false;
   $("age").addEventListener("input", () => {
     sliderDays = Number($("age").value);
@@ -243,6 +248,15 @@ document.addEventListener("keydown", (e) => {
 
 window.addEventListener("resize", () => drawTitle($("title")));
 window.addEventListener("hashchange", setupAdmin);
+// 「経過日数」ボタン：スライダーを出す・しまう。しまうときは表示を今日の状態に戻す
+$("kanri-toggle").addEventListener("click", () => {
+  if ($("admin").hidden) { openSlider(); return; }
+  $("admin").hidden = true;
+  $("kanri-toggle").classList.remove("on");
+  if (location.hash === "#kanri") history.replaceState(null, "", location.pathname + location.search);
+  sliderDays = 0; $("age").value = 0; $("age-out").textContent = "+0日";
+  redrawAll();
+});
 
 
 /* ---------- 管理ページへのボタン ----------
@@ -254,6 +268,7 @@ async function showAdminLink() {
   const res = await sb.from("admins").select("user_id").eq("user_id", user.id);
   if (res.data && res.data.length) {
     $("admin-link").hidden = false;
+    $("kanri-toggle").hidden = false;
     isAdmin = true;
     setupAdmin();   // 確認用スライダーは管理者にだけ出す
   }

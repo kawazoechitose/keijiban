@@ -29,10 +29,13 @@
       <a class="btn" href="submit.html" style="color:inherit;text-decoration:none">掲示を申請する</a>
       <!-- 管理者としてログインしているブラウザでだけ表示される -->
       <a class="btn" id="admin-link" href="admin.html" hidden style="color:inherit;text-decoration:none">管理ページ</a>
+      <!-- 管理者だけ：経過日数を足して見た目を確かめるスライダーを出す・しまう -->
+      <button class="btn" id="kanri-toggle" type="button" hidden>経過日数</button>
     </div>
   </header>
 
-  <!-- 確認用スライダー（管理者としてログインしているブラウザで、アドレスの最後に #kanri を付けたときだけ出る） -->
+  <!-- 確認用スライダー（管理者としてログインしているブラウザで、「経過日数」ボタンを押すか、アドレスの最後に #kanri を付けたときだけ出る）
+       画面の下に固定して表示する -->
   <div id="admin" hidden>
     <label for="age">経過日数を足して確認（表示だけ）</label>
     <input id="age" type="range" min="0" max="1095" step="1" value="0">

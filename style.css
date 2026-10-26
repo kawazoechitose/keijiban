@@ -47,6 +47,11 @@ body {
 
 /* ---------- 確認用スライダー ---------- */
 #admin { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 0 0 24px; font-size: 13px; }
+/* 掲示板ページでは、見出しや掲示物と重ならないように画面の下に固定する */
+.board-page #admin {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; margin: 0;
+  padding: 10px 16px; background: var(--blue); border-top: 1px solid var(--white);
+}
 #admin label, #admin output { filter: url(#alias); }
 #admin input { accent-color: #fff; flex: 1; min-width: 160px; max-width: 420px; }
 
@@ -71,6 +76,7 @@ body {
 /* ボタンは裏に掲示物があっても読めるように、青の地を敷く */
 .board-page .head .btn { background: var(--blue); }
 .board-page .head .btn:hover, .board-page .head .btn:focus-visible { background: var(--white); }
+.board-page .head .btn.on { background: var(--yellow); color: var(--blue); }
 .post { position: absolute; display: block; padding: 0; border: 0; background: #fff; cursor: pointer; }
 .post canvas { display: block; width: 100%; height: 100%; }
 .note { filter: url(#alias); }

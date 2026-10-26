@@ -56,6 +56,21 @@ body {
    幅を変えるときは common.js の BOARD_WIDTH_PX も同じ値にする */
 #board { position: relative; width: 1400px; aspect-ratio: 16 / 10; }
 .board-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px; }
+/* 掲示面の中の重なり（掲示物・線・URL の札）を掲示面の中だけで閉じる。
+   これで、見出しや拡大表示が掲示物より必ず上に出る */
+#board { isolation: isolate; }
+
+/* 掲示板ページ：見出しとボタンを掲示面の上に重ねる。掲示物は見出しの裏まで入り込む
+   見出しの部分は押せないようにして、裏の掲示物を押せるようにする（ボタンだけは押せる） */
+.board-page { position: relative; }
+.board-page .head {
+  position: absolute; top: 32px; left: 16px; z-index: 2;
+  margin: 0; pointer-events: none;
+}
+.board-page .head .actions { pointer-events: auto; }
+/* ボタンは裏に掲示物があっても読めるように、青の地を敷く */
+.board-page .head .btn { background: var(--blue); }
+.board-page .head .btn:hover, .board-page .head .btn:focus-visible { background: var(--white); }
 .post { position: absolute; display: block; padding: 0; border: 0; background: #fff; cursor: pointer; }
 .post canvas { display: block; width: 100%; height: 100%; }
 .note { filter: url(#alias); }

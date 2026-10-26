@@ -129,9 +129,8 @@ function drawLines(posts, refs) {
   const g = {};
   posts.forEach((p) => { if (p.group) (g[p.group] = g[p.group] || []).push(p.id); });
   const pairs = [];
-  const KINDS = ["photo_group", "place", "shot", "title"];   // 仲間ごとに線の種類を割り当てる（本番と同じく全種類を表示）
-  Object.values(g).filter((ids) => ids.length >= 2).slice(0, Number($("grp").value)).forEach((ids, gi) => {
-    const kind = KINDS[gi % KINDS.length];
+  const kind = pick(["photo_group", "shot", "manual", "place", "title"]);   // 本番と同じく、関連付けの線は1種類だけ
+  Object.values(g).filter((ids) => ids.length >= 2).slice(0, Number($("grp").value)).forEach((ids) => {
     const done = [ids[0]], rest = ids.slice(1);
     const d = (a, b) => Math.hypot(center[a][0] - center[b][0], (center[a][1] - center[b][1]) * BOARD_RATIO);
     while (rest.length) {

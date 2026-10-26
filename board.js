@@ -72,19 +72,24 @@ function buildBoard() {
     placed.push({ canvas, post });
     box.addEventListener("click", () => openViewer(post));
   });
-  placeRefs();
+  placeRefs(list);
   drawLinks(list);
 }
 
-// 関連する情報（URL）を、掲示面の保存された位置に文字として置く。押すとそのサイトが別のタブで開く
-function placeRefs() {
+// 関連する情報（URL）を、つながっている掲示物のすぐ近くに文字として置く。押すとそのサイトが別のタブで開く
+// 位置は札ごとに決まっていて、開くたびに変わらない。掲示物の位置を決め直したときも、札はその掲示物について行く
+function placeRefs(list) {
+  const byId = {};
+  list.forEach((p) => { byId[p.id] = p; });
   REFS.forEach((r) => {
+    const link = REF_POSTS.find((x) => x.ref_id === r.id && byId[x.post_id]);   // つながっている最初の掲示物
+    const pos = link ? refPosNear(byId[link.post_id], String(r.id)) : r;
     const a = document.createElement("a");
     a.className = "ref";
     a.href = r.url; a.target = "_blank"; a.rel = "noopener noreferrer";
     a.textContent = r.label || r.url;
-    a.style.left = (r.pos_left ?? 0.05) * 100 + "%";
-    a.style.top = (r.pos_top ?? 0.05) * 100 + "%";
+    a.style.left = (pos.pos_left ?? 0.05) * 100 + "%";
+    a.style.top = (pos.pos_top ?? 0.05) * 100 + "%";
     a.dataset.ref = r.id;
     $("board").appendChild(a);
   });
@@ -92,11 +97,12 @@ function placeRefs() {
 
 
 /* ---------- 関連付けの線 ----------
-   ・手動でつないだ組：いつも表示
-   ・自動の関連付け：「同じ写真」「同じ撮影場所」「同じ撮影時期」「同じ見出し」をすべて表示
-     （線の形はつながりの種類ごとに変える。common.js の LINE_KIND）
+   ・URL の札とその掲示物：いつも表示
+   ・それ以外の関連付け：「同じ掲示板」「同じ撮影時期」「関連するポスター（自分でつないだもの）」
+     「同じ撮影場所」「同じ見出し」のうち、開くたびにランダムに1種類を選んで表示
+   ・線の形は種類ごとに決まっている（common.js の LINE_KIND）
      （同じ仲間が3枚以上あるときは、近いもの同士を順に結んで1本の木の形にする） */
-const AUTO_KEYS = ["photo_group", "place", "shot", "title"];
+const AUTO_KEYS = ["photo_group", "shot", "manual", "place", "title"];
 
 function drawLinks(list) {
   // 掲示物の中心（掲示面に対する割合）
@@ -105,7 +111,7 @@ function drawLinks(list) {
     const hFrac = p.pos_width * (p.height_mm / p.width_mm) / BOARD_RATIO;
     center[p.id] = [p.pos_left + p.pos_width / 2, p.pos_top + hFrac / 2];
   });
-  const pairs = LINKS.filter((l) => center[l.a] && center[l.b]).map((l) => [l.a, l.b, "manual"]);
+  const pairs = [];
 
   // URL の文字の中心（置いた後の実際の大きさから計算する）
   const board = $("board");
@@ -117,7 +123,7 @@ function drawLinks(list) {
   });
   REF_POSTS.forEach((x) => { if (center["ref:" + x.ref_id] && center[x.post_id]) pairs.push(["ref:" + x.ref_id, x.post_id, "ref"]); });
 
-  // 自動：すべての項目について、仲間が2枚以上いれば線を引く
+  // 関連付け：線が引ける種類（仲間が2枚以上いるもの）の中から、1種類をランダムに選ぶ
   const groupsOf = (key) => {
     const g = {};
     list.forEach((p) => {
@@ -127,9 +133,14 @@ function drawLinks(list) {
     });
     return Object.values(g).filter((ids) => ids.length >= 2);
   };
-  AUTO_KEYS.forEach((key) => {
-    groupsOf(key).forEach((ids) => nearestTree(ids, center).forEach(([a, b]) => pairs.push([a, b, key])));
-  });
+  const manualPairs = LINKS.filter((l) => center[l.a] && center[l.b]).map((l) => [l.a, l.b, "manual"]);
+  const pairsOf = (key) => key === "manual" ? manualPairs
+    : groupsOf(key).flatMap((ids) => nearestTree(ids, center).map(([a, b]) => [a, b, key]));
+  const candidates = AUTO_KEYS.filter((k) => pairsOf(k).length);
+  if (candidates.length) {
+    const key = candidates[Math.floor(Math.random() * candidates.length)];
+    pairs.push(...pairsOf(key));
+  }
 
   if (!pairs.length) return;
   // 掲示物の高さ（古い順に 2, 4, 6…）。URL の札は一番上にあるので、相手の掲示物の高さで決まる

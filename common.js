@@ -284,14 +284,28 @@ function choosePosition(posts, index) {
 
 
 // 掲示物の近く（中心から少し離れた位置）に、URL の札を置く位置を決める
-function refPosNear(post) {
-  if (post.pos_width == null) return { pos_left: 0.02 + Math.random() * 0.7, pos_top: 0.03 + Math.random() * 0.9 };
+// seed（文字）を渡すと、同じ seed なら毎回同じ位置になる（開くたびに札が動かないように）
+function refPosNear(post, seed) {
+  const rnd = seed ? seededRandom(seed) : Math.random;
+  if (post.pos_width == null) return { pos_left: 0.02 + rnd() * 0.7, pos_top: 0.03 + rnd() * 0.9 };
   const h = post.pos_width * (post.height_mm / post.width_mm) / BOARD_RATIO;
   const cx = post.pos_left + post.pos_width / 2, cy = post.pos_top + h / 2;
-  const ang = Math.random() * Math.PI * 2;
-  const dist = Math.max(post.pos_width, h) / 2 + 0.04 + Math.random() * 0.08;   // 掲示物の外側に出る距離
+  const ang = rnd() * Math.PI * 2;
+  const dist = Math.max(post.pos_width, h) / 2 + 0.04 + rnd() * 0.08;   // 掲示物の外側に出る距離
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   return { pos_left: clamp(cx + Math.cos(ang) * dist, 0.01, 0.85), pos_top: clamp(cy + Math.sin(ang) * dist * 1.6, 0.01, 0.95) };
+}
+
+// 文字から、いつも同じ並びになる 0〜1 の乱数を作る
+function seededRandom(text) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return () => {
+    h = (h + 0x6D2B79F5) | 0;
+    let t = Math.imul(h ^ (h >>> 15), 1 | h);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 /* ---------- 関連付けの線を描く ----------
@@ -304,12 +318,12 @@ function refPosNear(post) {
 // つながりの種類ごとの線の形（数値は画面上の px）
 //   line：直線　dot：点線　dash：破線　wave：なみ線　zigzag：ギザギザ線　chain：一点鎖線
 const LINE_KIND = {
-  manual: "line",        // 自分でつないだもの
-  ref: "dot",            // URL の札
-  photo_group: "line",   // 同じ写真（同じ掲示板）から取り込んだもの
+  photo_group: "line",   // 同じ掲示板（同じ写真から取り込んだもの）
+  shot: "wave",          // 同じ撮影時期
+  manual: "dash",        // 関連するポスター（管理ページで自分でつないだもの）
   place: "zigzag",       // 同じ撮影場所
-  shot: "dash",          // 同じ撮影時期
   title: "chain",        // 同じ見出し
+  ref: "dot",            // URL の札（いつも表示）
 };
 const WAVE_LENGTH_PX = 14, WAVE_HEIGHT_PX = 3;     // なみ線：1つの波の長さ、振れ幅
 const ZIGZAG_LENGTH_PX = 8, ZIGZAG_HEIGHT_PX = 3;  // ギザギザ線：1つの山の長さ、振れ幅

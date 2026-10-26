@@ -175,7 +175,7 @@ let viewingPost = null;
 
 function openViewer(post) {
   viewingPost = post;
-  $("viewer-days").textContent = "掲示から" + Math.floor(daysSince(post.posted_at)) + "日";
+  $("viewer-days").textContent = "掲示から" + Math.floor(daysSince(post.posted_at) + (post.extra_days || 0)) + "日";
   drawFaded($("viewer-canvas"), post, 1400).catch((e) => console.error(e.message));
   const info = $("viewer-info");
   info.textContent = "";
@@ -248,6 +248,22 @@ document.addEventListener("keydown", (e) => {
 
 window.addEventListener("resize", () => drawTitle($("title")));
 window.addEventListener("hashchange", setupAdmin);
+// 「ランダムに褪せさせる」：掲示物ごとに 0〜RANDOM_FADE_MAX_DAYS 日のどれかを足して表示する（表示だけ。保存しない）
+// 押すたびに振り直す。スライダーの日数はその上にさらに足される
+const RANDOM_FADE_MAX_DAYS = 1095;
+$("rand-fade").addEventListener("click", () => {
+  POSTS.forEach((p) => { p.extra_days = Math.random() * RANDOM_FADE_MAX_DAYS; });
+  $("rand-fade").textContent = "ランダムに振り直す";
+  $("rand-reset").hidden = false;
+  redrawAll();
+});
+function clearRandomFade() {
+  POSTS.forEach((p) => { delete p.extra_days; });
+  $("rand-fade").textContent = "ランダムに褪せさせる";
+  $("rand-reset").hidden = true;
+}
+$("rand-reset").addEventListener("click", () => { clearRandomFade(); redrawAll(); });
+
 // 「経過日数」ボタン：スライダーを出す・しまう。しまうときは表示を今日の状態に戻す
 $("kanri-toggle").addEventListener("click", () => {
   if ($("admin").hidden) { openSlider(); return; }
@@ -255,6 +271,7 @@ $("kanri-toggle").addEventListener("click", () => {
   $("kanri-toggle").classList.remove("on");
   if (location.hash === "#kanri") history.replaceState(null, "", location.pathname + location.search);
   sliderDays = 0; $("age").value = 0; $("age-out").textContent = "+0日";
+  clearRandomFade();
   redrawAll();
 });
 

@@ -40,6 +40,9 @@
     <label for="age">経過日数を足して確認（表示だけ）</label>
     <input id="age" type="range" min="0" max="1095" step="1" value="0">
     <output id="age-out">+0日</output>
+    <!-- 掲示物ごとにランダムな日数を足す（表示だけ。開き直すと元に戻る） -->
+    <button class="btn" id="rand-fade" type="button">ランダムに褪せさせる</button>
+    <button class="btn" id="rand-reset" type="button" hidden>ランダムをやめる</button>
   </div>
 
   <!-- 掲示面。画面が狭いときは、掲示面を縮めずに横へスクロールして見る -->

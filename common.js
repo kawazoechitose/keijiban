@@ -165,7 +165,8 @@ async function drawFaded(canvas, post, maxWidth) {
   const ctx = canvas.getContext("2d");
   const out = ctx.createImageData(source.width, source.height);
   const share = post.kind === "photo" ? BLACK_SHARE_PHOTO : BLACK_SHARE_TEXT;
-  fadePixels(source, out, fadeAmounts(daysSince(post.posted_at)), share);
+  // extra_days：管理者の「ランダムに褪せさせる」で一時的に足す日数（保存はしない）
+  fadePixels(source, out, fadeAmounts(daysSince(post.posted_at) + (post.extra_days || 0)), share);
   ctx.putImageData(out, 0, 0);
 }
 

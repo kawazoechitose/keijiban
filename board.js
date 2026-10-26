@@ -252,7 +252,7 @@ window.addEventListener("hashchange", setupAdmin);
 // 押すたびに振り直す。スライダーの日数はその上にさらに足される
 // 下にある掲示物ほど多くの日数を足す（一番下が一番褪せ、一番上はほとんど褪せない）。
 // そのうえで、1枚ずつ少しランダムにばらつかせる
-const RANDOM_FADE_MAX_DAYS = 365;   // 一番下の掲示物に足す日数のおおよその上限
+const RANDOM_FADE_MAX_DAYS = 90;    // 一番下の掲示物に足す日数のおおよその上限
 const RANDOM_FADE_BIAS = 2;         // 大きいほど、上の方の掲示物が褪せにくくなる（1 で重なり順に均等）
 const RANDOM_FADE_JITTER = 0.4;     // ばらつきの大きさ（0 でばらつきなし。0.4 なら ±40%）
 $("rand-fade").addEventListener("click", () => {

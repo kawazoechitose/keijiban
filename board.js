@@ -93,7 +93,8 @@ function placeRefs() {
 
 /* ---------- 関連付けの線 ----------
    ・手動でつないだ組：いつも表示
-   ・自動の関連付け：「同じ写真」「同じ撮影場所」「同じ撮影時期」のうち、開くたびにランダムに1つ選んで表示
+   ・自動の関連付け：「同じ写真」「同じ撮影場所」「同じ撮影時期」「同じ見出し」をすべて表示
+     （線の形はつながりの種類ごとに変える。common.js の LINE_KIND）
      （同じ仲間が3枚以上あるときは、近いもの同士を順に結んで1本の木の形にする） */
 const AUTO_KEYS = ["photo_group", "place", "shot", "title"];
 
@@ -116,7 +117,7 @@ function drawLinks(list) {
   });
   REF_POSTS.forEach((x) => { if (center["ref:" + x.ref_id] && center[x.post_id]) pairs.push(["ref:" + x.ref_id, x.post_id, "ref"]); });
 
-  // 自動：仲間が2枚以上いる項目だけを候補にして、1つをランダムに選ぶ
+  // 自動：すべての項目について、仲間が2枚以上いれば線を引く
   const groupsOf = (key) => {
     const g = {};
     list.forEach((p) => {
@@ -126,11 +127,9 @@ function drawLinks(list) {
     });
     return Object.values(g).filter((ids) => ids.length >= 2);
   };
-  const candidates = AUTO_KEYS.filter((k) => groupsOf(k).length);
-  if (candidates.length) {
-    const key = candidates[Math.floor(Math.random() * candidates.length)];
+  AUTO_KEYS.forEach((key) => {
     groupsOf(key).forEach((ids) => nearestTree(ids, center).forEach(([a, b]) => pairs.push([a, b, key])));
-  }
+  });
 
   if (!pairs.length) return;
   // 掲示物の高さ（古い順に 2, 4, 6…）。URL の札は一番上にあるので、相手の掲示物の高さで決まる

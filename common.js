@@ -306,7 +306,7 @@ function refPosNear(post) {
 const LINE_KIND = {
   manual: "line",        // 自分でつないだもの
   ref: "dot",            // URL の札
-  photo_group: "wave",   // 同じ写真から取り込んだもの
+  photo_group: "line",   // 同じ写真（同じ掲示板）から取り込んだもの
   place: "zigzag",       // 同じ撮影場所
   shot: "dash",          // 同じ撮影時期
   title: "chain",        // 同じ見出し

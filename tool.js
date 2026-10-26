@@ -162,7 +162,7 @@ function setMode(m) {
     T.mode === "ref" ? "基準にするもの（寸法の分かる掲示物1枚、または掲示面）の四隅を順不同でクリックしてください。"
     : T.mode === "item" ? "取り込む掲示物の四隅を順不同でクリックしてください。続けて次の掲示物も指定できます。点はドラッグで動かせます。"
     : T.mode === "crop" ? "残したい範囲をドラッグで囲みます。指を離すと、その範囲だけに切り詰められます。"
-    : T.mode === "warp" ? "写真の四隅にある白い四角をドラッグして変形します。指を離すと写真が描き直されます。もう一度「変形」を押すと終了します。"
+    : T.mode === "warp" ? "写真の四隅にある白い四角をドラッグして変形します。辺の真ん中のつまみを動かすと、横幅だけ・縦幅だけを変えられます（角は shift を押しながら動かすと、横か縦の一方向だけに動きます）。指を離すと写真が描き直されます。もう一度「変形」を押すと終了します。"
     : "点はドラッグで動かせます。";
   draw();
 }
@@ -289,6 +289,7 @@ function warpRebuild(newQuad) {
   pc.width = W; pc.height = H;
   return true;
 }
+window.addEventListener("resize", () => { if (T.photo) applyZoom(); });
 $("warp-reset").addEventListener("click", () => {
   if (!T.orig) return;
   const x0 = Math.min(...T.quad.map((p) => p[0])), y0 = Math.min(...T.quad.map((p) => p[1]));
@@ -310,7 +311,15 @@ function buildZoom() {
     seg.appendChild(b);
   });
 }
+// 「全体」のときに、写真が表示枠に縦も横も収まる倍率（変形で写真の大きさが変わるたびに計算し直す）
+function fitScale() {
+  const wrap = $("pick-wrap");
+  const maxW = (wrap.clientWidth || 600) - 2;
+  const maxH = Math.max(200, window.innerHeight * 0.7 - 4);   // 表示枠の高さ（style.css の .pick-wrap の max-height: 70vh）
+  return Math.min(1, maxW / pc.width, maxH / pc.height);
+}
 function applyZoom() {
+  T.fit = fitScale();
   if (T.photo) pc.style.width = Math.round(pc.width * T.fit * T.zoom) + "px";
   buildZoom();
   draw();
@@ -363,7 +372,18 @@ function draw() {
       px.fillStyle = "#fff"; px.fillRect(p[0] - hs, p[1] - hs, hs * 2, hs * 2);
       px.strokeStyle = "#000"; px.lineWidth = lw; px.strokeRect(p[0] - hs, p[1] - hs, hs * 2, hs * 2);
     });
+    // 辺の真ん中のつまみ：上下の辺は横長、左右の辺は縦長の形
+    edgeMids(q).forEach((m, k) => {
+      const w = k % 2 ? hs * 0.7 : hs * 1.8, h = k % 2 ? hs * 1.8 : hs * 0.7;
+      px.fillStyle = "#fff"; px.fillRect(m[0] - w, m[1] - h, w * 2, h * 2);
+      px.strokeStyle = "#000"; px.lineWidth = lw; px.strokeRect(m[0] - w, m[1] - h, w * 2, h * 2);
+    });
   }
+}
+
+// 変形の四角形の各辺の真ん中（0：上、1：右、2：下、3：左）
+function edgeMids(q) {
+  return [0, 1, 2, 3].map((k) => { const a = q[k], b = q[(k + 1) % 4]; return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; });
 }
 
 // 既存の点の近くを押したか
@@ -387,8 +407,15 @@ pc.addEventListener("pointerdown", (e) => {
     return;
   }
   if (T.mode === "warp") {
+    // 角のつまみ：自由に動かす（shift を押しながらだと、横か縦の一方向だけ）
+    // 辺のつまみ：上下の辺は縦だけ、左右の辺は横だけに、その辺の2つの角をまとめて動かす（縦幅だけ・横幅だけ変えられる）
     const r = 16 / cssScale(), i = T.quad.findIndex((q) => dist(q, p) < r);
-    if (i >= 0) { T.wq = T.quad.map((q) => [...q]); T.drag = { owner: "quad", pts: T.wq, i }; pc.setPointerCapture(e.pointerId); }
+    const k = i >= 0 ? -1 : edgeMids(T.quad).findIndex((m) => dist(m, p) < r);
+    if (i >= 0 || k >= 0) {
+      T.wq = T.quad.map((q) => [...q]);
+      T.drag = { owner: "quad", pts: T.wq, i, edge: k, start: p, base: T.quad.map((q) => [...q]) };
+      pc.setPointerCapture(e.pointerId);
+    }
     return;
   }
   // 既にある点の近くを押した場合：動かせば点の移動、動かさずに離せば新しい点の追加として扱う
@@ -426,7 +453,20 @@ function addPoint(p) {
 pc.addEventListener("pointermove", (e) => {
   if (T.pending && Math.hypot(e.clientX - T.pending.x, e.clientY - T.pending.y) > 4) { T.drag = T.pending.h; T.pending = null; }
   if (!T.drag) return;
-  T.drag.pts[T.drag.i] = evPt(e);
+  const D = T.drag, p = evPt(e);
+  if (D.owner === "quad") {
+    let dx = p[0] - D.start[0], dy = p[1] - D.start[1];
+    if (D.edge >= 0) {
+      if (D.edge % 2) dy = 0; else dx = 0;   // 左右の辺は横だけ、上下の辺は縦だけ
+      [D.edge, (D.edge + 1) % 4].forEach((j) => { D.pts[j] = [D.base[j][0] + dx, D.base[j][1] + dy]; });
+    } else {
+      if (e.shiftKey) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0; }
+      D.pts[D.i] = [D.base[D.i][0] + dx, D.base[D.i][1] + dy];
+    }
+    draw();
+    return;
+  }
+  D.pts[D.i] = p;
   draw();
 });
 pc.addEventListener("pointerup", () => {

@@ -333,7 +333,7 @@ const WAVE_LENGTH_PX = 14, WAVE_HEIGHT_PX = 3;     // なみ線：1つの波の�
 const ZIGZAG_LENGTH_PX = 8, ZIGZAG_HEIGHT_PX = 3;  // ギザギザ線：1つの山の長さ、振れ幅
 const DASH_PATTERN = { dot: "1 3", dash: "6 4", chain: "10 3 1 3" };
 
-// 見えやすくする線の種類：ほかの掲示物の上を通し、黒い縁を付ける。
+// 見えやすくする線の種類：ほかの掲示物の上を通す。
 // ただし、つないだ掲示物の部分だけは線を消して、その掲示物の裏を通っているように見せる
 const LINE_ON_TOP = ["ref", "manual"];
 let lineMaskSeq = 0;
@@ -381,7 +381,7 @@ function drawLineLayers(board, pairs, center, zOf, rects = {}) {
       svg.appendChild(mask);
       const g = document.createElementNS(NS, "g");
       g.setAttribute("mask", "url(#" + id + ")");
-      g.append(mk("edge"), mk());
+      g.append(mk());
       svg.appendChild(g);
     }
     board.appendChild(svg);

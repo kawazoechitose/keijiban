@@ -174,8 +174,6 @@ body {
 /* 関連付けの線：つないだ2枚の下を通す（重なりの高さは common.js の drawLineLayers が決める） */
 #board .links { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; overflow: visible; }
 #board .links path { fill: none; stroke: var(--white); stroke-width: 1; vector-effect: non-scaling-stroke; shape-rendering: crispEdges; }
-/* 見えやすくする線（URL の札・自分でつないだもの）の黒い縁 */
-#board .links path.edge { stroke: var(--black); stroke-width: 3; }
 
 /* 関連する情報（URL）：掲示面の上に置く文字。線より上に出す */
 #board .ref {

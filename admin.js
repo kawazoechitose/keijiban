@@ -173,18 +173,7 @@ async function loadPosts() {
     const rm = removeButton(post, m);
 
     // 位置を決め直す（大きさと位置をもう一度ランダムに決める）
-    const mv = button("位置を決め直す");
-    mv.addEventListener("click", async () => {
-      mv.disabled = true;
-      try {
-        const list = await fetchPostsOrdered();
-        const idx = list.findIndex((p) => p.id === post.id);
-        const upd = await sb.from("posts").update(choosePosition(list, idx)).eq("id", post.id);
-        if (upd.error) throw upd.error;
-        m.className = "msg"; m.textContent = "位置を決め直しました。";
-      } catch (e) { fail(m, e); }
-      mv.disabled = false;
-    });
+    const mv = moveButton(post, m);
 
     ops.append(mv);
 
@@ -279,6 +268,23 @@ async function loadPosts() {
     row.append(cv, info);
     box.append(row);
   });
+}
+
+// 位置を決め直すボタン（大きさと位置をもう一度ランダムに決める）。掲示中の一覧と、掲示板ごとの時系列の両方で使う
+function moveButton(post, m) {
+  const mv = button("位置を決め直す");
+  mv.addEventListener("click", async () => {
+    mv.disabled = true;
+    try {
+      const list = await fetchPostsOrdered();
+      const idx = list.findIndex((p) => p.id === post.id);
+      const upd = await sb.from("posts").update(choosePosition(list, idx)).eq("id", post.id);
+      if (upd.error) throw upd.error;
+      m.className = "msg"; m.textContent = "位置を決め直しました。";
+    } catch (e) { fail(m, e); }
+    mv.disabled = false;
+  });
+  return mv;
 }
 
 // 撤去ボタン（2回押すと撤去する）。掲示中の一覧と、掲示板ごとの時系列の両方で使う
@@ -408,7 +414,7 @@ function showHistory() {
         }
         const cap = document.createElement("figcaption");
         cap.textContent = (p.title || "（見出しなし）") + "\n掲示日 " + fmtDate(p.posted_at);
-        // 操作：内容を直す（写真から取り込んだものだけ）・撤去する
+        // 操作：内容を直す（写真から取り込んだものだけ）・位置を決め直す・撤去する
         const m = document.createElement("p"); m.className = "msg";
         const ops = document.createElement("div"); ops.className = "h-ops";
         if (p.kind === "photo") {
@@ -427,7 +433,7 @@ function showHistory() {
           });
           ops.append(ed);
         }
-        ops.append(removeButton(p, m));
+        ops.append(moveButton(p, m), removeButton(p, m));
         fig.append(cv, cap, ops, m);
         row.append(fig);
       });

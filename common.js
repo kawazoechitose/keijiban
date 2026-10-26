@@ -178,22 +178,23 @@ async function drawFaded(canvas, post, maxWidth) {
 const BOARD_RATIO = 10 / 16;    // 掲示面の 高さ÷幅（style.css の #board と揃える）
 let BOARD_WIDTH_PX = 1400;    // 掲示面の幅（style.css の #board と揃える）
 // 掲示物の大きさ（長い方の辺の長さ、px）。見出し「掲示板」の1文字（パソコンで約140px）を目安にしている
-//   小さめ：40〜140px（見出しの文字より小さい）
-//   中くらい：140〜280px（見出しの文字より大きい）
-//   大きい：280〜660px（ごくまれ）
+//   小さめ〜中くらい：SIZE_SMALL_MIN_PX〜SIZE_MEDIUM_MAX_PX
+//   大きい：SIZE_MEDIUM_MAX_PX〜SIZE_LARGE_MAX_PX（ごくまれ）
 let SIZE_SMALL_MIN_PX = 29;
 let SIZE_MEDIUM_MAX_PX = 281;
-let SIZE_LARGE_MAX_PX = 949;
+let SIZE_LARGE_MAX_PX = 606;
 let LARGE_CHANCE = 0.04;      // 大きいものになる確率（4%）。残り96%は小さめ〜中くらい
+let LARGE_MAX_COUNT = 1;      // 掲示面に置ける「大きい」掲示物の枚数の上限。上限に達したら、次からは小さめ〜中くらいだけにする
 
 // 長い方の辺の長さをランダムに決める（「何倍か」で均等にばらつかせる）
-function randomLongSide() {
+// allowLarge が false のときは、大きいものを選ばない
+function randomLongSide(allowLarge = true) {
   const logRand = (a, b) => a * Math.pow(b / a, Math.random());
-  return Math.random() < LARGE_CHANCE
+  return allowLarge && Math.random() < LARGE_CHANCE
     ? logRand(SIZE_MEDIUM_MAX_PX, SIZE_LARGE_MAX_PX)
     : logRand(SIZE_SMALL_MIN_PX, SIZE_MEDIUM_MAX_PX);
 }
-let VISIBLE_RATIO = 0.13;     // 下になった掲示物の、見えている面積の下限（13%）
+let VISIBLE_RATIO = 0.25;     // 下になった掲示物の、見えている面積の下限（25%）
 const VISIBLE_BLOCK_CELLS = 4;  // 一続きで見えている部分の下限（マス数。1マス10pxなので約40px）
 const TRIES = 40;               // 置き場所を探す回数（見つからなければ少し小さくして探し直す）
 const GRID_COLS = 240;          // 判定のマス目の横の数（2400px ÷ 240 = 1マス10px）
@@ -256,8 +257,11 @@ function choosePosition(posts, index) {
   const others = [];
   posts.forEach((p, i) => { if (i !== index && p.pos_width != null) others.push({ i, r: rectOf(p) }); });
 
+  // すでに置いてある「大きい」掲示物の枚数を数える（長い方の辺が中くらいの最大を超えるもの）
+  const largeCount = posts.filter((p, i) => i !== index && p.pos_width != null &&
+    p.pos_width * BOARD_WIDTH_PX * Math.max(1, p.height_mm / p.width_mm) > SIZE_MEDIUM_MAX_PX + 1).length;
   // 長い方の辺の長さから、幅（掲示面の幅に対する割合）に直す
-  const longPx = randomLongSide();
+  const longPx = randomLongSide(largeCount < LARGE_MAX_COUNT);
   let size = (aspect > 1 ? longPx / aspect : longPx) / BOARD_WIDTH_PX;
   let chosen = null, best = null, bestScore = -1;
   for (let round = 0; round < 6 && !chosen; round++) {
@@ -329,7 +333,13 @@ const WAVE_LENGTH_PX = 14, WAVE_HEIGHT_PX = 3;     // なみ線：1つの波の�
 const ZIGZAG_LENGTH_PX = 8, ZIGZAG_HEIGHT_PX = 3;  // ギザギザ線：1つの山の長さ、振れ幅
 const DASH_PATTERN = { dot: "1 3", dash: "6 4", chain: "10 3 1 3" };
 
-function drawLineLayers(board, pairs, center, zOf) {
+// 見えやすくする線の種類：ほかの掲示物の上を通し、黒い縁を付ける。
+// ただし、つないだ掲示物の部分だけは線を消して、その掲示物の裏を通っているように見せる
+const LINE_ON_TOP = ["ref", "manual"];
+let lineMaskSeq = 0;
+
+// rects（任意）：id → [左, 上, 幅, 高さ]（掲示面に対する割合）。LINE_ON_TOP の線で、線を消す範囲に使う
+function drawLineLayers(board, pairs, center, zOf, rects = {}) {
   const NS = "http://www.w3.org/2000/svg";
   // 掲示面と同じ縦横比の座標にする（なみ線などの形がゆがまないように）
   const W = 1000, H = 1000 * board.clientHeight / board.clientWidth;
@@ -341,11 +351,39 @@ function drawLineLayers(board, pairs, center, zOf) {
     svg.setAttribute("viewBox", "0 0 " + W + " " + H);
     svg.setAttribute("preserveAspectRatio", "none");
     svg.setAttribute("aria-hidden", "true");
-    svg.style.zIndex = Math.min(zOf(a), zOf(b)) - 1;
-    const path = document.createElementNS(NS, "path");
-    path.setAttribute("d", linePath(shape, center[a][0] * W, center[a][1] * H, center[b][0] * W, center[b][1] * H, k));
-    if (DASH_PATTERN[shape]) path.setAttribute("stroke-dasharray", DASH_PATTERN[shape]);
-    svg.appendChild(path);
+    const d = linePath(shape, center[a][0] * W, center[a][1] * H, center[b][0] * W, center[b][1] * H, k);
+    const onTop = LINE_ON_TOP.includes(kind);
+    const mk = (cls) => {
+      const p = document.createElementNS(NS, "path");
+      p.setAttribute("d", d);
+      if (cls) p.setAttribute("class", cls);
+      if (DASH_PATTERN[shape]) p.setAttribute("stroke-dasharray", DASH_PATTERN[shape]);
+      return p;
+    };
+    if (!onTop) {
+      // ふつうの線：つないだ2枚のうち下にある方のすぐ下に描く
+      svg.style.zIndex = Math.min(zOf(a), zOf(b)) - 1;
+      svg.appendChild(mk());
+    } else {
+      // 見えやすくする線：すべての掲示物の上（URL の札の下）に描き、つないだ掲示物の範囲だけ線を消す
+      svg.style.zIndex = 100000;
+      const id = "line-mask-" + (++lineMaskSeq);
+      const mask = document.createElementNS(NS, "mask");
+      mask.setAttribute("id", id);
+      mask.setAttribute("maskUnits", "userSpaceOnUse");
+      const rect = (x, y, w, h, fill) => {
+        const r = document.createElementNS(NS, "rect");
+        r.setAttribute("x", x); r.setAttribute("y", y); r.setAttribute("width", w); r.setAttribute("height", h); r.setAttribute("fill", fill);
+        mask.appendChild(r);
+      };
+      rect(-W, -H, W * 3, H * 3, "#fff");
+      [a, b].forEach((pid) => { const r = rects[pid]; if (r) rect(r[0] * W, r[1] * H, r[2] * W, r[3] * H, "#000"); });
+      svg.appendChild(mask);
+      const g = document.createElementNS(NS, "g");
+      g.setAttribute("mask", "url(#" + id + ")");
+      g.append(mk("edge"), mk());
+      svg.appendChild(g);
+    }
     board.appendChild(svg);
   });
 }

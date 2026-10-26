@@ -174,6 +174,8 @@ body {
 /* 関連付けの線：つないだ2枚の下を通す（重なりの高さは common.js の drawLineLayers が決める） */
 #board .links { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; overflow: visible; }
 #board .links path { fill: none; stroke: var(--white); stroke-width: 1; vector-effect: non-scaling-stroke; shape-rendering: crispEdges; }
+/* 見えやすくする線（URL の札・自分でつないだもの）の黒い縁 */
+#board .links path.edge { stroke: var(--black); stroke-width: 3; }
 
 /* 関連する情報（URL）：掲示面の上に置く文字。線より上に出す */
 #board .ref {
@@ -204,3 +206,15 @@ body {
 .h-photo .msg { font-size: 11.5px; margin: 0; }
 .h-edit { border: 1px solid #808080; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
 .h-edit h3 { margin: 0; font-size: 13px; filter: url(#alias2); }
+
+/* つなぐ：選んでいる掲示物の印と、画面下の帯（管理ページ） */
+.linking canvas { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.link-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 9000;
+  display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
+  padding: 10px 16px; background: var(--grey); color: var(--black);
+  border-top: 2px solid var(--white); font-size: 13px; filter: url(#alias2);
+}
+.link-bar .msg { margin: 0; }
+/* 画面下の帯に、ページの最後が隠れないようにする */
+body.admin-page { padding-bottom: 96px; }

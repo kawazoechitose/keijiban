@@ -106,10 +106,11 @@ const AUTO_KEYS = ["photo_group", "shot", "manual", "place", "title"];
 
 function drawLinks(list) {
   // 掲示物の中心（掲示面に対する割合）
-  const center = {};
+  const center = {}, rects = {};
   list.forEach((p) => {
     const hFrac = p.pos_width * (p.height_mm / p.width_mm) / BOARD_RATIO;
     center[p.id] = [p.pos_left + p.pos_width / 2, p.pos_top + hFrac / 2];
+    rects[p.id] = [p.pos_left, p.pos_top, p.pos_width, hFrac];
   });
   const pairs = [];
 
@@ -146,7 +147,7 @@ function drawLinks(list) {
   // 掲示物の高さ（古い順に 2, 4, 6…）。URL の札は一番上にあるので、相手の掲示物の高さで決まる
   const z = {};
   list.forEach((p, i) => { z[p.id] = (i + 1) * 2; });
-  drawLineLayers($("board"), pairs, center, (id) => (id in z ? z[id] : 1e6));
+  drawLineLayers($("board"), pairs, center, (id) => (id in z ? z[id] : 1e6), rects);
 }
 
 // 近いもの同士を順に結んで、全員がつながる最短の組み合わせを作る

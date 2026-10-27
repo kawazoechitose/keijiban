@@ -16,7 +16,7 @@ let userImages = [];        // 自分で選んだ画像：{ url, w, h }
 const imgCache = new Map(); // 画像の画素の覚え
 
 /* ---------- 調整欄 ---------- */
-const IDS = ["n", "smin", "mmax", "lmax", "lp", "vis", "bw", "age", "grp", "lk"];
+const IDS = ["n", "smin", "mmax", "lmax", "lp", "lmc", "vis", "bw", "age", "grp", "lk"];
 const SAMPLE_LINKS = ["https://example.com/matsuri2019", "夏祭りの記事", "https://example.jp/event/radio-taiso", "町会のお知らせ", "https://example.org/news/123"];
 function readControls() {
   const v = {};
@@ -30,6 +30,7 @@ function applySettings(v) {
   SIZE_MEDIUM_MAX_PX = Math.max(v.smin + 1, v.mmax);
   SIZE_LARGE_MAX_PX = Math.max(SIZE_MEDIUM_MAX_PX + 1, v.lmax);
   LARGE_CHANCE = v.lp / 100;
+  LARGE_MAX_COUNT = v.lmc;
   VISIBLE_RATIO = v.vis / 100;
   BOARD_WIDTH_PX = v.bw;
   $("board").style.width = v.bw + "px";
@@ -42,6 +43,7 @@ common.js ：
   let SIZE_MEDIUM_MAX_PX = ${SIZE_MEDIUM_MAX_PX};
   let SIZE_LARGE_MAX_PX = ${SIZE_LARGE_MAX_PX};
   let LARGE_CHANCE = ${LARGE_CHANCE};
+  let LARGE_MAX_COUNT = ${LARGE_MAX_COUNT};
   let VISIBLE_RATIO = ${VISIBLE_RATIO};
 style.css ：
   #board { ... width: ${v.bw}px; ... }`;
@@ -115,16 +117,17 @@ async function drawPreview(canvas, post) {
   canvas.width = src.width; canvas.height = src.height;
   const ctx = canvas.getContext("2d");
   const out = ctx.createImageData(src.width, src.height);
-  fadePixels(src, out, fadeAmounts(daysSince(post.posted_at)), post.kind === "img" ? BLACK_SHARE_PHOTO : BLACK_SHARE_TEXT);
+  fadePixels(src, out, fadeAmounts(fadeDaysSince(post.posted_at)), post.kind === "img" ? BLACK_SHARE_PHOTO : BLACK_SHARE_TEXT);
   ctx.putImageData(out, 0, 0);
 }
 
 // 同じ仲間同士を、近いものから順に線で結ぶ（線はつないだ2枚の下を通る）
 function drawLines(posts, refs) {
-  const center = {};
+  const center = {}, rects = {};
   posts.forEach((p) => {
     const hFrac = p.pos_width * (p.height_mm / p.width_mm) / BOARD_RATIO;
     center[p.id] = [p.pos_left + p.pos_width / 2, p.pos_top + hFrac / 2];
+    rects[p.id] = [p.pos_left, p.pos_top, p.pos_width, hFrac];
   });
   const g = {};
   posts.forEach((p) => { if (p.group) (g[p.group] = g[p.group] || []).push(p.id); });
@@ -147,7 +150,7 @@ function drawLines(posts, refs) {
   });
   const z = {};
   posts.forEach((q, i) => { z[q.id] = (i + 1) * 2; });
-  drawLineLayers(board, pairs, center, (id) => (id in z ? z[id] : 1e6));
+  drawLineLayers(board, pairs, center, (id) => (id in z ? z[id] : 1e6), rects);
 }
 
 /* ---------- 操作 ---------- */

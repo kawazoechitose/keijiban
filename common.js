@@ -21,11 +21,21 @@ function imageUrl(path) {
 // 確認用：実際の日数に足す日数。公開するときは 0
 const EXTRA_DAYS = 0;
 
-// 褪色の速さ（日）。大きいほどゆっくり
-const FADE_DAYS_YELLOW  = 40;
-const FADE_DAYS_MAGENTA = 400;
-const FADE_DAYS_CYAN    = 3000;
-const FADE_DAYS_BLACK   = 400;
+// 褪色の速さ（日）。大きいほどゆっくり。この日数で、最終的に抜ける量の約63%が抜ける
+// 日の当たる屋外の掲示板に貼った紙の掲示物を想定したおおよその値（推定。日当たりやインクで大きく変わる）
+//   黄：半年ほどで目立って薄くなり、1年でほぼ抜ける
+//   赤（マゼンタ）：1年で半分ほど、2〜3年で大きく抜ける
+//   青（シアン）：数年たってもほとんど残る（古い掲示物が青っぽくなる）
+const FADE_DAYS_YELLOW  = 180;
+const FADE_DAYS_MAGENTA = 540;
+const FADE_DAYS_CYAN    = 5000;
+const FADE_DAYS_BLACK   = 2000;
+
+// 季節による違い：日差し（紫外線）の強い夏は早く、弱い冬はゆっくり褪せる
+// 1年の平均を 1 として、夏は 1 + SEASON_STRENGTH 倍、冬は 1 - SEASON_STRENGTH 倍の速さ
+//   0.6 なら夏 1.6倍・冬 0.4倍（夏は冬の4倍の速さ）。0 にすると季節の違いをなくす
+const SEASON_STRENGTH = 0.6;
+const SEASON_PEAK_DAY = 200;   // 一番早く褪せる日（1月1日から数えた日数。200 ≒ 7月19日）
 
 // 最終的にどこまで抜けるか（1 = 全部）
 const FADE_MAX_YELLOW  = 1;
@@ -52,6 +62,22 @@ let sliderDays = 0;   // 確認用スライダーで足した日数
 function daysSince(iso) {
   const ms = Date.now() - new Date(iso).getTime();
   return Math.max(0, ms / 86400000) + EXTRA_DAYS + sliderDays;
+}
+
+// 褪色に使う日数：実際の日数を、季節の速さで重み付けして数える（夏の1日は長く、冬の1日は短く数える）
+// 確認用スライダーの日数は「今日から先へ進めた」として扱うので、進めた先の季節の速さも反映される
+const YEAR_DAYS = 365.2425;
+function seasonalDays(fromMs, toMs) {
+  const d1 = fromMs / 86400000, d2 = toMs / 86400000;   // 1970年1月1日からの日数
+  if (d2 <= d1) return 0;
+  const w = 2 * Math.PI / YEAR_DAYS;
+  const phase = (d) => w * (d - SEASON_PEAK_DAY);
+  // 速さ 1 + S·cos(位相) を、掲示した日から今まで足し合わせた値
+  return (d2 - d1) + SEASON_STRENGTH / w * (Math.sin(phase(d2)) - Math.sin(phase(d1)));
+}
+function fadeDaysSince(iso) {
+  const now = Date.now() + (EXTRA_DAYS + sliderDays) * 86400000;
+  return seasonalDays(new Date(iso).getTime(), now);
 }
 
 function fadeAmounts(days) {
@@ -166,7 +192,7 @@ async function drawFaded(canvas, post, maxWidth) {
   const out = ctx.createImageData(source.width, source.height);
   const share = post.kind === "photo" ? BLACK_SHARE_PHOTO : BLACK_SHARE_TEXT;
   // extra_days：管理者の「ランダムに褪せさせる」で一時的に足す日数（保存はしない）
-  fadePixels(source, out, fadeAmounts(daysSince(post.posted_at) + (post.extra_days || 0)), share);
+  fadePixels(source, out, fadeAmounts(fadeDaysSince(post.posted_at) + (post.extra_days || 0)), share);
   ctx.putImageData(out, 0, 0);
 }
 
